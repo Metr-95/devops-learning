@@ -7,3 +7,5 @@
 - Docker
 - Git
 - CI/CD
+- Nginx
+- CI/CD
