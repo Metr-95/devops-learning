@@ -1,14 +1,582 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Мой DevOps проект</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Demo — возможности искусственного интеллекта</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c27;
+    --border: rgba(255,255,255,0.08);
+    --text: #e8e8f0;
+    --muted: #7a7a99;
+    --accent: #7c6fff;
+    --accent2: #ff6fb0;
+    --accent3: #4fffcf;
+    --glow: rgba(124,111,255,0.15);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(124,111,255,0.12) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -60%);
+    pointer-events: none;
+  }
+
+  .hero-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.2s forwards;
+  }
+
+  .hero h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(36px, 6vw, 72px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.4s forwards;
+  }
+
+  .hero h1 span {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    color: var(--muted);
+    font-size: 17px;
+    max-width: 480px;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.6s forwards;
+  }
+
+  .scroll-hint {
+    opacity: 0;
+    animation: fadeUp 0.6s ease 1s forwards;
+    color: var(--muted);
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .scroll-hint::after {
+    content: '';
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--muted), transparent);
+    animation: pulse 2s ease infinite;
+  }
+
+  /* DEMOS */
+  .demos {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .demo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .demo-card:hover { border-color: rgba(124,111,255,0.3); }
+
+  .card-header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .card-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .icon-purple { background: rgba(124,111,255,0.15); }
+  .icon-pink   { background: rgba(255,111,176,0.15); }
+  .icon-teal   { background: rgba(79,255,207,0.15); }
+
+  .card-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .card-desc { color: var(--muted); font-size: 13px; }
+
+  .card-body { padding: 28px 32px; }
+
+  /* DEMO 1: Sentiment */
+  .sentiment-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 80px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 14px;
+  }
+
+  .sentiment-input:focus { border-color: rgba(124,111,255,0.5); }
+  .sentiment-input::placeholder { color: var(--muted); }
+
+  .btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 22px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .result-box {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--surface2);
+    border-radius: 12px;
+    border-left: 3px solid var(--accent);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 48px;
+    color: var(--text);
+    transition: all 0.3s;
+    display: none;
+  }
+
+  .result-box.visible { display: block; }
+
+  /* DEMO 2: Password */
+  .password-wrap {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .password-display {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-family: 'Space Grotesk', monospace;
+    font-size: 15px;
+    color: var(--accent3);
+    letter-spacing: 0.05em;
+    min-width: 200px;
+    word-break: break-all;
+  }
+
+  .strength-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .strength-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease, background 0.4s;
+  }
+
+  .options { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+
+  .option {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--muted); cursor: pointer;
+  }
+
+  .option input[type=checkbox] { accent-color: var(--accent); }
+
+  .length-wrap { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+
+  input[type=range] {
+    accent-color: var(--accent);
+    flex: 1;
+  }
+
+  /* DEMO 3: Text transform */
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 16px;
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 4px;
+  }
+
+  .tab {
+    flex: 1; padding: 8px; border: none; background: none;
+    color: var(--muted); font-family: 'Inter', sans-serif;
+    font-size: 13px; border-radius: 7px; cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .tab.active { background: var(--accent); color: #fff; }
+
+  .transform-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+  }
+
+  .transform-input:focus { border-color: rgba(124,111,255,0.5); }
+
+  .transform-output {
+    background: var(--surface2);
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+    min-height: 60px;
+    border-left: 3px solid var(--accent2);
+  }
+
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+
+  .footer span { color: var(--accent); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
 </head>
 <body>
-  <h1>Задеплоено через CI/CD!</h1>
-  <p>GitHub Actions → Docker Hub → VPS
 
+<section class="hero">
+  <div class="hero-label">Возможности ИИ — живое демо</div>
+  <h1>ИИ думает.<br><span>Ты смотришь.</span></h1>
+  <p class="hero-sub">Три интерактивных демо — анализ текста, генерация паролей и трансформация стиля. Всё прямо в браузере.</p>
+  <div class="scroll-hint">Прокрути вниз</div>
+</section>
 
-</p>
+<div class="demos">
+
+  <!-- DEMO 1: Анализ настроения -->
+  <div class="demo-card">
+    <div class="card-header">
+      <div class="card-icon icon-purple">🧠</div>
+      <div>
+        <div class="card-title">Анализ настроения</div>
+        <div class="card-desc">ИИ определяет тональность текста и объясняет почему</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <textarea class="sentiment-input" id="sentimentText" placeholder="Напиши что-нибудь — радостное, грустное, злое или нейтральное...">Сегодня отличный день! Я наконец разобрался с Docker и CI/CD pipeline заработал с первого раза!</textarea>
+      <button class="btn" onclick="analyzeSentiment()">Анализировать</button>
+      <div class="result-box" id="sentimentResult"></div>
+    </div>
+  </div>
+
+  <!-- DEMO 2: Генератор паролей -->
+  <div class="demo-card">
+    <div class="card-header">
+      <div class="card-icon icon-teal">🔐</div>
+      <div>
+        <div class="card-title">Умный генератор паролей</div>
+        <div class="card-desc">Генерирует надёжные пароли с анализом сложности</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="length-wrap" style="margin-bottom:14px">
+        <span>Длина:</span>
+        <input type="range" id="pwLength" min="8" max="32" value="16" oninput="updateLength()">
+        <span id="pwLengthVal" style="min-width:24px">16</span>
+      </div>
+      <div class="options">
+        <label class="option"><input type="checkbox" id="pwUpper" checked onchange="generatePassword()"> A–Z</label>
+        <label class="option"><input type="checkbox" id="pwLower" checked onchange="generatePassword()"> a–z</label>
+        <label class="option"><input type="checkbox" id="pwNumbers" checked onchange="generatePassword()"> 0–9</label>
+        <label class="option"><input type="checkbox" id="pwSymbols" onchange="generatePassword()"> !@#$</label>
+      </div>
+      <div class="password-wrap">
+        <div class="password-display" id="pwDisplay">Нажми «Сгенерировать»</div>
+        <button class="btn" onclick="copyPassword()" id="copyBtn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">Копировать</button>
+      </div>
+      <div class="strength-bar">
+        <div class="strength-fill" id="strengthFill" style="width:0%"></div>
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px" id="strengthLabel">—</div>
+      <button class="btn" onclick="generatePassword()">Сгенерировать</button>
+    </div>
+  </div>
+
+  <!-- DEMO 3: Трансформация текста -->
+  <div class="demo-card">
+    <div class="card-header">
+      <div class="card-icon icon-pink">✍️</div>
+      <div>
+        <div class="card-title">Трансформация стиля</div>
+        <div class="card-desc">Один текст — разные стили подачи</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="tabs">
+        <button class="tab active" onclick="setStyle('formal', this)">Официально</button>
+        <button class="tab" onclick="setStyle('casual', this)">Дружески</button>
+        <button class="tab" onclick="setStyle('tech', this)">Технически</button>
+        <button class="tab" onclick="setStyle('short', this)">Кратко</button>
+      </div>
+      <input class="transform-input" id="transformInput" value="Я научился работать с Docker и теперь могу деплоить сайты автоматически" placeholder="Введи любой текст...">
+      <button class="btn" onclick="transformText()" style="margin-bottom:16px">Трансформировать</button>
+      <div class="transform-output" id="transformOutput">Результат появится здесь...</div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  Задеплоено через <span>GitHub Actions → Docker → VPS</span> · Автоматически при каждом коммите
+</footer>
+
+<script>
+  // DEMO 1: Sentiment Analysis (local logic, no API)
+  function analyzeSentiment() {
+    const text = document.getElementById('sentimentText').value.trim();
+    if (!text) return;
+    const btn = document.querySelector('.demo-card:first-child .btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Анализирую...';
+    const result = document.getElementById('sentimentResult');
+    result.classList.remove('visible');
+
+    setTimeout(() => {
+      const lower = text.toLowerCase();
+      const positive = ['отлич', 'хорош', 'люблю', 'рад', 'счаст', 'замечат', 'класс', 'супер', 'заработал', 'разобрался', 'успех', 'ура', 'здорово', 'прекрас', 'восхит'];
+      const negative = ['плохо', 'ужасно', 'ненавижу', 'грустно', 'беда', 'проблема', 'ошибк', 'не работает', 'сложно', 'страшно', 'боюсь'];
+      const posCount = positive.filter(w => lower.includes(w)).length;
+      const negCount = negative.filter(w => lower.includes(w)).length;
+
+      let sentiment, emoji, color, explanation;
+      if (posCount > negCount) {
+        sentiment = 'Позитивное'; emoji = '😊'; color = '#4fffcf';
+        explanation = `Найдено ${posCount} позитивных маркеров. Текст содержит слова успеха, радости или удовлетворения. Автор, скорее всего, доволен ситуацией.`;
+      } else if (negCount > posCount) {
+        sentiment = 'Негативное'; emoji = '😔'; color = '#ff6fb0';
+        explanation = `Найдено ${negCount} негативных маркеров. Текст содержит слова разочарования или проблем. Автор, вероятно, испытывает трудности.`;
+      } else {
+        sentiment = 'Нейтральное'; emoji = '😐'; color = '#7a7a99';
+        explanation = 'Явных эмоциональных маркеров не найдено. Текст носит информационный или нейтральный характер.';
+      }
+
+      result.style.borderLeftColor = color;
+      result.innerHTML = `<strong style="color:${color}">${emoji} ${sentiment}</strong><br><br>${explanation}`;
+      result.classList.add('visible');
+      btn.disabled = false;
+      btn.innerHTML = 'Анализировать';
+    }, 800);
+  }
+
+  // DEMO 2: Password Generator
+  let currentPassword = '';
+
+  function updateLength() {
+    const val = document.getElementById('pwLength').value;
+    document.getElementById('pwLengthVal').textContent = val;
+    generatePassword();
+  }
+
+  function generatePassword() {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+    let chars = '';
+    if (document.getElementById('pwUpper').checked) chars += upper;
+    if (document.getElementById('pwLower').checked) chars += lower;
+    if (document.getElementById('pwNumbers').checked) chars += numbers;
+    if (document.getElementById('pwSymbols').checked) chars += symbols;
+    if (!chars) { chars = lower; }
+
+    const length = parseInt(document.getElementById('pwLength').value);
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += chars[Math.floor(Math.random() * chars.length)];
+    }
+    currentPassword = password;
+    document.getElementById('pwDisplay').textContent = password;
+
+    // Strength
+    let strength = 0;
+    if (length >= 12) strength++;
+    if (length >= 20) strength++;
+    if (document.getElementById('pwUpper').checked && document.getElementById('pwLower').checked) strength++;
+    if (document.getElementById('pwNumbers').checked) strength++;
+    if (document.getElementById('pwSymbols').checked) strength++;
+
+    const labels = ['', 'Слабый', 'Слабый', 'Средний', 'Надёжный', 'Очень надёжный'];
+    const colors = ['', '#ff4444', '#ff6b35', '#ffc107', '#4fffcf', '#7c6fff'];
+    const widths = ['0%', '20%', '35%', '55%', '80%', '100%'];
+
+    document.getElementById('strengthFill').style.width = widths[strength];
+    document.getElementById('strengthFill').style.background = colors[strength];
+    document.getElementById('strengthLabel').textContent = labels[strength] || '—';
+  }
+
+  function copyPassword() {
+    if (!currentPassword) return;
+    navigator.clipboard.writeText(currentPassword).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = 'Скопировано ✓';
+      btn.style.color = 'var(--accent3)';
+      setTimeout(() => { btn.textContent = 'Копировать'; btn.style.color = 'var(--muted)'; }, 2000);
+    });
+  }
+
+  // DEMO 3: Text Transform
+  let currentStyle = 'formal';
+
+  function setStyle(style, el) {
+    currentStyle = style;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function transformText() {
+    const text = document.getElementById('transformInput').value.trim();
+    if (!text) return;
+
+    const btn = document.querySelectorAll('.demo-card')[2].querySelector('.btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Трансформирую...';
+
+    const transforms = {
+      formal: t => `Настоящим сообщается, что ${t.toLowerCase().replace(/я /g, 'автор ')}. Данная информация представляет практическую ценность в контексте профессиональной деятельности.`,
+      casual: t => `Слушай, ${t.toLowerCase()}! Это реально круто, я тебе говорю 😄 Попробуй обязательно, не пожалеешь!`,
+      tech: t => {
+        const words = t.toLowerCase().split(' ');
+        return `[INFO] ${words.join('_').toUpperCase()} | Статус: OK | Время выполнения: ${Math.floor(Math.random()*500)+100}ms | Версия: 1.0.${Math.floor(Math.random()*9)}`;
+      },
+      short: t => {
+        const words = t.split(' ');
+        return words.slice(0, Math.min(5, words.length)).join(' ') + (words.length > 5 ? '...' : '');
+      }
+    };
+
+    setTimeout(() => {
+      document.getElementById('transformOutput').textContent = transforms[currentStyle](text);
+      btn.disabled = false;
+      btn.innerHTML = 'Трансформировать';
+    }, 600);
+  }
+
+  // Init
+  generatePassword();
+</script>
 </body>
 </html>
