@@ -195,6 +195,32 @@
         <div class="summary-item"><div class="label">Суммарная комиссия (USD)</div><div class="value" id="sumCommission">$0.00</div></div>
       </div>
     </div>
+
+    <!-- Лог посещений stats.html -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h2 style="margin:0">👁 Лог посещений статистики</h2>
+        <button class="btn secondary" style="padding:6px 12px;font-size:13px" onclick="loadVisits()">Обновить</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left">Дата</th>
+              <th style="text-align:left">IP</th>
+              <th style="text-align:left">Страна</th>
+              <th style="text-align:left">Город</th>
+              <th style="text-align:left">Провайдер</th>
+              <th style="text-align:left">Устройство</th>
+            </tr>
+          </thead>
+          <tbody id="visitsBody"></tbody>
+        </table>
+        <div class="empty-state" id="visitsEmpty">Посещений пока нет.</div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:10px" id="visitsCount"></div>
+    </div>
+
   </div>
 </div>
 
@@ -224,6 +250,7 @@ function login() {
     $('loginScreen').style.display = 'none';
     $('appScreen').style.display = 'block';
     loadEntries();
+    loadVisits();
   } else {
     $('loginError').style.display = 'block';
     $('passwordInput').value = '';
@@ -243,6 +270,44 @@ async function loadEntries() {
     entries = await res.json();
     render();
   } catch(e) { toast('Ошибка загрузки данных'); }
+}
+
+async function loadVisits() {
+  try {
+    const res = await fetch(API + '/visits');
+    const visits = await res.json();
+    const tbody = $('visitsBody');
+    const empty = $('visitsEmpty');
+    const countEl = $('visitsCount');
+
+    const countryFlags = { 'RU':'🇷🇺','IL':'🇮🇱','US':'🇺🇸','DE':'🇩🇪','GB':'🇬🇧','UA':'🇺🇦','BY':'🇧🇾','KZ':'🇰🇿','FR':'🇫🇷','PL':'🇵🇱' };
+
+    if (visits.length === 0) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      tbody.innerHTML = visits.map(v => {
+        const flag = countryFlags[v.country] || '🌍';
+        const ua = v.userAgent || '';
+        let browser = 'Неизвестно';
+        if (ua.includes('Chrome')) browser = 'Chrome';
+        else if (ua.includes('Firefox')) browser = 'Firefox';
+        else if (ua.includes('Safari')) browser = 'Safari';
+        else if (ua.includes('Edge')) browser = 'Edge';
+        const device = ua.includes('Mobile') ? '📱' : '💻';
+        return `<tr>
+          <td style="text-align:left">${escapeHtml(v.date)}</td>
+          <td style="text-align:left;font-family:monospace;font-size:12px">${escapeHtml(v.ip)}</td>
+          <td style="text-align:left">${flag} ${escapeHtml(v.country)}</td>
+          <td style="text-align:left">${escapeHtml(v.city)}</td>
+          <td style="text-align:left;font-size:12px">${escapeHtml(v.org)}</td>
+          <td style="text-align:left">${device} ${browser}</td>
+        </tr>`;
+      }).join('');
+    }
+    countEl.textContent = `Всего записей: ${visits.length}`;
+  } catch(e) { toast('Ошибка загрузки лога посещений'); }
 }
 
 async function fetchEurUsdRate() {
@@ -484,6 +549,7 @@ if (sessionStorage.getItem('auth') === '1') {
   $('loginScreen').style.display = 'none';
   $('appScreen').style.display = 'block';
   loadEntries();
+  loadVisits();
 }
 </script>
 </body>
