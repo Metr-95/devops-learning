@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Калькулятор комиссий — вход</title>
+<title>Калькулятор комиссий</title>
 <style>
   :root {
     --bg: #f5f6f8; --card: #ffffff; --border: #dfe3e8;
@@ -15,7 +15,7 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
-  .wrap { max-width: 980px; margin: 0 auto; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   .subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 20px; }
@@ -60,28 +60,25 @@
   .del-btn:hover { color: var(--red); }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1f2430; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13.5px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 50; }
   .toast.show { opacity: 1; }
-  .nav { display: flex; gap: 10px; margin-bottom: 20px; }
+  .nav { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
   .nav a { color: var(--accent); text-decoration: none; font-size: 14px; }
   .nav a:hover { text-decoration: underline; }
-
-  /* Экран входа */
+  .logout-btn { margin-left: auto; font-size: 13px; color: var(--text-muted); cursor: pointer; background: none; border: none; padding: 0; }
+  .logout-btn:hover { color: var(--red); }
   #loginScreen { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
   .login-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px; max-width: 360px; width: 100%; text-align: center; }
   .login-card h2 { margin: 0 0 8px; font-size: 20px; }
   .login-card p { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
   .login-card input { margin-bottom: 14px; }
-  .login-card .btn { width: 100%; justify-content: center; }
   .login-error { color: var(--red); font-size: 13px; margin-top: 8px; display: none; }
-
   #appScreen { display: none; }
-  .logout-btn { float: right; font-size: 13px; color: var(--text-muted); cursor: pointer; background: none; border: none; padding: 0; }
-  .logout-btn:hover { color: var(--red); }
+  .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .mode-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #e8f0fe; color: #2f6fed; font-weight: 600; margin-left: 8px; vertical-align: middle; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- Экран входа -->
   <div id="loginScreen">
     <div class="login-card">
       <h2>🃏 Калькулятор комиссий</h2>
@@ -95,7 +92,6 @@
     </div>
   </div>
 
-  <!-- Основное приложение -->
   <div id="appScreen">
     <div class="nav">
       <a href="/">← Главная</a>
@@ -103,8 +99,8 @@
       <button class="logout-btn" onclick="logout()">Выйти</button>
     </div>
 
-    <h1>Учёт комиссий по депозитам <span style="font-size:14px;color:var(--text-muted);font-weight:400">— режим редактирования</span></h1>
-    <div class="subtitle">Комиссия = (сколько отправили) − (остаток после − остаток до). Данные сохраняются на сервере автоматически.</div>
+    <h1>Учёт комиссий по депозитам</h1>
+    <div class="subtitle">Данные сохраняются на сервере автоматически. Комиссия всегда в USD.</div>
 
     <div class="card">
       <h2>Новая запись</h2>
@@ -115,11 +111,19 @@
           <datalist id="roomList"></datalist>
         </div>
         <div class="field small">
-          <label for="currency">Валюта счёта</label>
-          <select id="currency">
+          <label for="accountCurrency">Валюта счёта в руме</label>
+          <select id="accountCurrency" onchange="onCurrencyChange()">
             <option value="USD">USD</option>
             <option value="EUR">EUR</option>
           </select>
+        </div>
+        <div class="field small" id="depositCurrencyField" style="display:none">
+          <label for="depositCurrency">Валюта депозита</label>
+          <select id="depositCurrency" onchange="updatePreview()">
+            <option value="EUR">EUR</option>
+            <option value="USD">USD</option>
+          </select>
+          <div class="hint">Чем пополняете счёт</div>
         </div>
       </div>
 
@@ -136,40 +140,49 @@
 
       <div class="row" style="margin-top:14px;">
         <div class="field">
-          <label for="before">Остаток ДО депозита</label>
-          <input type="number" id="before" step="0.01" placeholder="0.00">
+          <label id="labelBefore">Остаток ДО депозита</label>
+          <input type="number" id="before" step="0.01" placeholder="0.00" oninput="updatePreview()">
         </div>
         <div class="field">
-          <label for="sent">Сколько отправили</label>
-          <input type="number" id="sent" step="0.01" placeholder="0.00">
+          <label id="labelSent">Сколько отправили</label>
+          <input type="number" id="sent" step="0.01" placeholder="0.00" oninput="updatePreview()">
         </div>
         <div class="field">
-          <label for="after">Остаток ПОСЛЕ депозита</label>
-          <input type="number" id="after" step="0.01" placeholder="0.00">
+          <label id="labelAfter">Остаток ПОСЛЕ депозита</label>
+          <input type="number" id="after" step="0.01" placeholder="0.00" oninput="updatePreview()">
         </div>
       </div>
 
       <div class="preview" id="preview">
-        <span>Комиссия по этой записи:</span>
+        <span id="previewLabel">Комиссия по этой записи:</span>
         <span class="amount" id="previewAmount">—</span>
       </div>
 
       <div class="actions">
-        <button class="btn" id="addBtn">Добавить запись</button>
-        <button class="btn secondary" id="resetFormBtn">Очистить форму</button>
+        <button class="btn" id="addBtn" onclick="addEntry()">Добавить запись</button>
+        <button class="btn secondary" onclick="resetForm()">Очистить форму</button>
       </div>
     </div>
 
     <div class="card">
       <h2>История депозитов</h2>
       <div class="table-wrap">
-        <table id="logTable">
+        <table>
           <thead>
             <tr>
-              <th>Дата</th><th>Рум</th><th>Валюта</th><th>Курс</th>
-              <th>До</th><th>Отправлено</th><th>После</th>
-              <th>До (USD)</th><th>Отправлено (USD)</th><th>После (USD)</th>
-              <th>Комиссия (USD)</th><th></th>
+              <th>Дата</th>
+              <th>Рум</th>
+              <th>Счёт</th>
+              <th>Депозит</th>
+              <th>Курс</th>
+              <th>До (ориг.)</th>
+              <th>Отправлено (ориг.)</th>
+              <th>После (ориг.)</th>
+              <th>До (USD)</th>
+              <th>Отправлено (USD)</th>
+              <th>После (USD)</th>
+              <th>Комиссия (USD)</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="logBody"></tbody>
@@ -192,26 +205,19 @@ const PASSWORD = 'poker2026';
 let entries = [];
 let currentRate = null;
 
-function $ (id) { return document.getElementById(id); }
+function $(id) { return document.getElementById(id); }
 function fmt(n) { return Number(n).toFixed(2); }
 function num(v) { const n = parseFloat(v); return isNaN(n) ? null : n; }
-function calcCommission(b, s, a) { return s - (a - b); }
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-
 function toast(msg) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// AUTH
 function login() {
-  const pw = $('passwordInput').value;
-  if (pw === PASSWORD) {
+  if ($('passwordInput').value === PASSWORD) {
     sessionStorage.setItem('auth', '1');
     $('loginScreen').style.display = 'none';
     $('appScreen').style.display = 'block';
@@ -229,51 +235,27 @@ function logout() {
   $('passwordInput').value = '';
 }
 
-// API calls
 async function loadEntries() {
   try {
     const res = await fetch(API + '/entries');
     entries = await res.json();
     render();
-  } catch(e) {
-    toast('Ошибка загрузки данных с сервера');
-  }
+  } catch(e) { toast('Ошибка загрузки данных'); }
 }
 
-async function saveEntry(entry) {
-  const res = await fetch(API + '/entries', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(entry)
-  });
-  return await res.json();
-}
-
-async function deleteEntry(id) {
-  await fetch(API + '/entries/' + id, { method: 'DELETE' });
-}
-
-// Rate
 async function fetchEurUsdRate() {
-  const rateStatus = $('rateStatus');
-  rateStatus.textContent = 'Загружаю курс...';
+  $('rateStatus').textContent = 'Загружаю курс...';
   try {
     const res = await fetch('https://open.er-api.com/v6/latest/EUR');
     const data = await res.json();
     currentRate = data.rates.USD;
-    rateStatus.textContent = `1 EUR = ${currentRate.toFixed(4)} USD (обновлено)`;
+    $('rateStatus').textContent = `1 EUR = ${currentRate.toFixed(4)} USD`;
     updatePreview();
   } catch(e) {
     currentRate = null;
-    rateStatus.textContent = 'Не удалось получить курс. Введите вручную →';
+    $('rateStatus').textContent = 'Не удалось получить курс. Введите вручную →';
   }
 }
-
-$('currency').addEventListener('change', () => {
-  if ($('currency').value === 'EUR') { $('rateRow').style.display = 'flex'; fetchEurUsdRate(); }
-  else { $('rateRow').style.display = 'none'; currentRate = null; }
-  updatePreview();
-});
 
 $('fetchRateBtn').addEventListener('click', fetchEurUsdRate);
 $('rateManual').addEventListener('input', () => {
@@ -282,105 +264,182 @@ $('rateManual').addEventListener('input', () => {
   updatePreview();
 });
 
-function getActiveRate() {
-  if ($('currency').value !== 'EUR') return 1;
+function getAccountCurrency() { return $('accountCurrency').value; }
+function getDepositCurrency() {
+  const acc = getAccountCurrency();
+  if (acc === 'USD') return 'USD';
+  return $('depositCurrency').value;
+}
+
+function onCurrencyChange() {
+  const acc = getAccountCurrency();
+  if (acc === 'EUR') {
+    $('rateRow').style.display = 'flex';
+    $('depositCurrencyField').style.display = 'flex';
+    fetchEurUsdRate();
+  } else {
+    $('rateRow').style.display = 'none';
+    $('depositCurrencyField').style.display = 'none';
+    currentRate = null;
+  }
+  updateLabels();
+  updatePreview();
+}
+
+function updateLabels() {
+  const acc = getAccountCurrency();
+  const dep = getDepositCurrency();
+  $('labelBefore').textContent = `Остаток ДО (${acc})`;
+  $('labelSent').textContent = `Отправлено (${dep})`;
+  $('labelAfter').textContent = `Остаток ПОСЛЕ (${acc})`;
+}
+
+$('depositCurrency').addEventListener('change', () => { updateLabels(); updatePreview(); });
+
+function getRate() {
+  if (getAccountCurrency() === 'USD') return 1;
   return num($('rateManual').value) || currentRate || null;
 }
 
 function updatePreview() {
-  const before = num($('before').value), sent = num($('sent').value), after = num($('after').value);
+  const before = num($('before').value);
+  const sent = num($('sent').value);
+  const after = num($('after').value);
   const el = $('previewAmount');
-  if (before === null || sent === null || after === null) { el.textContent = '—'; el.className = 'amount'; return; }
-  const rate = getActiveRate();
-  if ($('currency').value === 'EUR' && !rate) { el.textContent = 'нужен курс EUR/USD'; el.className = 'amount'; return; }
-  const commission = calcCommission(before * rate, sent * rate, after * rate);
-  el.textContent = `$${fmt(commission)}`;
-  el.className = 'amount ' + (commission >= 0 ? 'pos' : 'neg');
-}
 
-['before','sent','after'].forEach(id => $(id).addEventListener('input', updatePreview));
-
-function refreshRoomList() {
-  const list = $('roomList');
-  const rooms = [...new Set(entries.map(e => e.room))];
-  list.innerHTML = rooms.map(r => `<option value="${escapeHtml(r)}">`).join('');
-}
-
-function render() {
-  const tbody = $('logBody');
-  const empty = $('emptyState');
-  if (entries.length === 0) { tbody.innerHTML = ''; empty.style.display = 'block'; }
-  else {
-    empty.style.display = 'none';
-    tbody.innerHTML = entries.map(e => `
-      <tr>
-        <td>${escapeHtml(e.date)}</td>
-        <td>${escapeHtml(e.room)}</td>
-        <td>${e.currency}</td>
-        <td>${e.currency === 'EUR' ? fmt(e.rate) : '—'}</td>
-        <td>${fmt(e.beforeOrig)}</td><td>${fmt(e.sentOrig)}</td><td>${fmt(e.afterOrig)}</td>
-        <td>${fmt(e.beforeUSD)}</td><td>${fmt(e.sentUSD)}</td><td>${fmt(e.afterUSD)}</td>
-        <td class="comm-cell ${e.commission >= 0 ? 'pos' : 'neg'}">$${fmt(e.commission)}</td>
-        <td><button class="del-btn" data-id="${e.id}" title="Удалить">✕</button></td>
-      </tr>
-    `).join('');
+  if (before === null || sent === null || after === null) {
+    el.textContent = '—'; el.className = 'amount'; return;
   }
-  $('sumCount').textContent = entries.length;
-  const total = entries.reduce((s, e) => s + e.commission, 0);
-  $('sumCommission').textContent = '$' + fmt(total);
-  refreshRoomList();
+
+  const acc = getAccountCurrency();
+  const dep = getDepositCurrency();
+
+  if (acc === 'EUR') {
+    const rate = getRate();
+    if (!rate) { el.textContent = 'нужен курс EUR/USD'; el.className = 'amount'; return; }
+
+    const beforeUSD = before * rate;
+    const afterUSD = after * rate;
+    // Если депозит в USD — не конвертируем отправленное
+    const sentUSD = dep === 'USD' ? sent : sent * rate;
+    const commission = sentUSD - (afterUSD - beforeUSD);
+    el.textContent = `$${fmt(commission)}`;
+    el.className = 'amount ' + (commission >= 0 ? 'pos' : 'neg');
+  } else {
+    // Всё в USD
+    const commission = sent - (after - before);
+    el.textContent = `$${fmt(commission)}`;
+    el.className = 'amount ' + (commission >= 0 ? 'pos' : 'neg');
+  }
+}
+
+async function addEntry() {
+  const room = $('room').value.trim();
+  const before = num($('before').value);
+  const sent = num($('sent').value);
+  const after = num($('after').value);
+  const acc = getAccountCurrency();
+  const dep = getDepositCurrency();
+
+  if (!room) { toast('Укажите название рума'); return; }
+  if (before === null || sent === null || after === null) { toast('Заполните все три суммы'); return; }
+
+  let rate = 1;
+  if (acc === 'EUR') {
+    rate = getRate();
+    if (!rate) { toast('Нужен курс EUR/USD'); return; }
+  }
+
+  const r2 = n => Math.round(n * 100) / 100;
+  const r4 = n => Math.round(n * 10000) / 10000;
+
+  const beforeUSD = r2(before * rate);
+  const afterUSD = r2(after * rate);
+  const sentUSD = dep === 'USD' ? r2(sent) : r2(sent * rate);
+  const commission = r2(sentUSD - (afterUSD - beforeUSD));
+
+  const entry = {
+    date: new Date().toLocaleString('ru-RU'),
+    room,
+    accountCurrency: acc,
+    depositCurrency: dep,
+    rate: acc === 'EUR' ? r4(rate) : null,
+    beforeOrig: before,
+    sentOrig: sent,
+    afterOrig: after,
+    beforeUSD, sentUSD, afterUSD, commission
+  };
+
+  $('addBtn').disabled = true;
+  try {
+    const res = await fetch(API + '/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    });
+    const saved = await res.json();
+    entries.push(saved);
+    render();
+    toast('Запись сохранена ✓');
+    $('room').value = ''; $('before').value = ''; $('sent').value = ''; $('after').value = '';
+    updatePreview();
+  } catch(e) { toast('Ошибка сохранения'); }
+  $('addBtn').disabled = false;
+}
+
+function resetForm() {
+  $('room').value = ''; $('before').value = ''; $('sent').value = ''; $('after').value = '';
+  updatePreview();
 }
 
 $('logBody').addEventListener('click', async (ev) => {
   const btn = ev.target.closest('.del-btn');
   if (!btn) return;
-  const id = parseInt(btn.dataset.id);
   if (!confirm('Удалить запись?')) return;
-  await deleteEntry(id);
+  const id = parseInt(btn.dataset.id);
+  await fetch(API + '/entries/' + id, { method: 'DELETE' });
   entries = entries.filter(e => e.id !== id);
   render();
   toast('Запись удалена');
 });
 
-$('addBtn').addEventListener('click', async () => {
-  const room = $('room').value.trim();
-  const before = num($('before').value), sent = num($('sent').value), after = num($('after').value);
-  const currency = $('currency').value;
-  if (!room) { toast('Укажите название рума'); return; }
-  if (before === null || sent === null || after === null) { toast('Заполните все три суммы'); return; }
-  let rate = 1;
-  if (currency === 'EUR') { rate = getActiveRate(); if (!rate) { toast('Нужен курс EUR/USD'); return; } }
-  const r2 = n => Math.round(n * 100) / 100;
-  const r4 = n => Math.round(n * 10000) / 10000;
-  const beforeUSD = r2(before * rate), sentUSD = r2(sent * rate), afterUSD = r2(after * rate);
-  const commission = r2(calcCommission(beforeUSD, sentUSD, afterUSD));
-  const entry = {
-    date: new Date().toLocaleString('ru-RU'),
-    room, currency,
-    rate: currency === 'EUR' ? r4(rate) : null,
-    beforeOrig: before, sentOrig: sent, afterOrig: after,
-    beforeUSD, sentUSD, afterUSD, commission
-  };
-  $('addBtn').disabled = true;
-  try {
-    const saved = await saveEntry(entry);
-    entries.push(saved);
-    render();
-    toast('Запись сохранена на сервере ✓');
-    $('room').value = ''; $('before').value = ''; $('sent').value = ''; $('after').value = '';
-    updatePreview();
-  } catch(e) {
-    toast('Ошибка сохранения');
+function render() {
+  const tbody = $('logBody');
+  if (entries.length === 0) {
+    tbody.innerHTML = '';
+    $('emptyState').style.display = 'block';
+  } else {
+    $('emptyState').style.display = 'none';
+    tbody.innerHTML = entries.map(e => `
+      <tr>
+        <td>${escapeHtml(e.date)}</td>
+        <td>${escapeHtml(e.room)}</td>
+        <td>${e.accountCurrency || e.currency || 'USD'}</td>
+        <td>${e.depositCurrency || e.accountCurrency || e.currency || 'USD'}</td>
+        <td>${e.rate ? fmt(e.rate) : '—'}</td>
+        <td>${fmt(e.beforeOrig)}</td>
+        <td>${fmt(e.sentOrig)}</td>
+        <td>${fmt(e.afterOrig)}</td>
+        <td>${fmt(e.beforeUSD)}</td>
+        <td>${fmt(e.sentUSD)}</td>
+        <td>${fmt(e.afterUSD)}</td>
+        <td class="comm-cell ${e.commission >= 0 ? 'pos' : 'neg'}">$${fmt(e.commission)}</td>
+        <td><button class="del-btn" data-id="${e.id}" title="Удалить">✕</button></td>
+      </tr>
+    `).join('');
   }
-  $('addBtn').disabled = false;
-});
 
-$('resetFormBtn').addEventListener('click', () => {
-  $('room').value = ''; $('before').value = ''; $('sent').value = ''; $('after').value = '';
-  updatePreview();
-});
+  // Обновить datalist
+  const rooms = [...new Set(entries.map(e => e.room))];
+  $('roomList').innerHTML = rooms.map(r => `<option value="${escapeHtml(r)}">`).join('');
+
+  $('sumCount').textContent = entries.length;
+  const total = entries.reduce((s, e) => s + e.commission, 0);
+  $('sumCommission').textContent = '$' + fmt(total);
+}
 
 // Init
+updateLabels();
 if (sessionStorage.getItem('auth') === '1') {
   $('loginScreen').style.display = 'none';
   $('appScreen').style.display = 'block';
