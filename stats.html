@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Статистика покерных комиссий</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --border: #dfe3e8;
+    --text: #1f2430; --text-muted: #6b7280;
+    --accent: #2f6fed;
+    --green: #1a7f4e; --green-bg: #e8f6ee;
+    --red: #b3261e; --red-bg: #fdecea;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 20px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; }
+  .nav { display: flex; gap: 10px; margin-bottom: 20px; }
+  .nav a { color: var(--accent); text-decoration: none; font-size: 14px; }
+  .nav a:hover { text-decoration: underline; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: center; }
+  .stat-card .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; }
+  .stat-card .value.pos { color: var(--green); }
+  .stat-card .value.neg { color: var(--red); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr:hover { background: #fafbfc; }
+  .comm-cell { font-weight: 700; }
+  .comm-cell.pos { color: var(--green); }
+  .comm-cell.neg { color: var(--red); }
+  .empty-state { color: var(--text-muted); font-size: 14px; padding: 20px 0; text-align: center; }
+  .table-wrap { overflow-x: auto; }
+  .loading { color: var(--text-muted); font-size: 14px; padding: 20px 0; text-align: center; }
+  .room-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .room-bar .name { min-width: 120px; font-size: 13px; }
+  .room-bar .bar-wrap { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+  .room-bar .bar-fill { height: 100%; border-radius: 4px; background: var(--accent); }
+  .room-bar .amount { min-width: 80px; text-align: right; font-size: 13px; font-weight: 600; }
+  .room-bar .amount.pos { color: var(--green); }
+  .room-bar .amount.neg { color: var(--red); }
+  .updated { font-size: 12px; color: var(--text-muted); text-align: right; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <a href="/">← Главная</a>
+    <a href="/calculator.html">Управление записями</a>
+  </div>
+
+  <h1>📊 Статистика покерных комиссий</h1>
+  <div class="subtitle">Публичная страница — данные обновляются в реальном времени с сервера</div>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card"><div class="label">Загрузка...</div><div class="value">—</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Комиссии по румам</h2>
+    <div id="roomStats"><div class="loading">Загрузка...</div></div>
+  </div>
+
+  <div class="card">
+    <h2>История всех депозитов</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Дата</th><th>Рум</th><th>Валюта</th>
+            <th>Отправлено</th><th>Комиссия (USD)</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none">Записей пока нет.</div>
+    </div>
+    <div class="updated" id="updatedAt"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://185.239.48.132:3000';
+
+function fmt(n) { return Number(n).toFixed(2); }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch(API + '/entries');
+    const entries = await res.json();
+
+    // Общая статистика
+    const total = entries.reduce((s, e) => s + e.commission, 0);
+    const totalSent = entries.reduce((s, e) => s + e.sentUSD, 0);
+    const avgComm = entries.length ? total / entries.length : 0;
+
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-card">
+        <div class="label">Всего депозитов</div>
+        <div class="value">${entries.length}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Суммарная комиссия</div>
+        <div class="value ${total >= 0 ? 'pos' : 'neg'}">$${fmt(total)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Всего отправлено</div>
+        <div class="value">$${fmt(totalSent)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Средняя комиссия</div>
+        <div class="value ${avgComm >= 0 ? 'pos' : 'neg'}">$${fmt(avgComm)}</div>
+      </div>
+    `;
+
+    // Статистика по румам
+    const byRoom = {};
+    entries.forEach(e => {
+      if (!byRoom[e.room]) byRoom[e.room] = { commission: 0, count: 0 };
+      byRoom[e.room].commission += e.commission;
+      byRoom[e.room].count++;
+    });
+
+    const rooms = Object.entries(byRoom).sort((a, b) => b[1].commission - a[1].commission);
+    const maxAbs = Math.max(...rooms.map(r => Math.abs(r[1].commission)), 1);
+
+    if (rooms.length === 0) {
+      document.getElementById('roomStats').innerHTML = '<div class="empty-state">Нет данных</div>';
+    } else {
+      document.getElementById('roomStats').innerHTML = rooms.map(([name, data]) => `
+        <div class="room-bar">
+          <div class="name">${escapeHtml(name)} <span style="color:var(--text-muted);font-size:11px">(${data.count})</span></div>
+          <div class="bar-wrap">
+            <div class="bar-fill" style="width:${Math.abs(data.commission)/maxAbs*100}%;background:${data.commission >= 0 ? 'var(--green)' : 'var(--red)'}"></div>
+          </div>
+          <div class="amount ${data.commission >= 0 ? 'pos' : 'neg'}">$${fmt(data.commission)}</div>
+        </div>
+      `).join('');
+    }
+
+    // История
+    if (entries.length === 0) {
+      document.getElementById('emptyState').style.display = 'block';
+      document.getElementById('historyBody').innerHTML = '';
+    } else {
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('historyBody').innerHTML = [...entries].reverse().map(e => `
+        <tr>
+          <td>${escapeHtml(e.date)}</td>
+          <td>${escapeHtml(e.room)}</td>
+          <td>${e.currency}</td>
+          <td>$${fmt(e.sentUSD)}</td>
+          <td class="comm-cell ${e.commission >= 0 ? 'pos' : 'neg'}">$${fmt(e.commission)}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('updatedAt').textContent = 'Обновлено: ' + new Date().toLocaleString('ru-RU');
+
+  } catch(e) {
+    document.getElementById('statsGrid').innerHTML = '<div class="stat-card"><div class="label">Ошибка</div><div class="value" style="font-size:14px;color:var(--red)">Не удалось загрузить данные с сервера</div></div>';
+  }
+}
+
+loadStats();
+setInterval(loadStats, 30000); // Обновлять каждые 30 секунд
+</script>
+</body>
+</html>
