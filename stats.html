@@ -9,8 +9,8 @@
     --bg: #f5f6f8; --card: #ffffff; --border: #dfe3e8;
     --text: #1f2430; --text-muted: #6b7280;
     --accent: #2f6fed;
-    --green: #1a7f4e; --green-bg: #e8f6ee;
-    --red: #b3261e; --red-bg: #fdecea;
+    --green: #1a7f4e;
+    --red: #b3261e;
     --radius: 10px;
   }
   * { box-sizing: border-box; }
@@ -39,7 +39,9 @@
   .comm-cell.neg { color: var(--red); }
   .empty-state { color: var(--text-muted); font-size: 14px; padding: 20px 0; text-align: center; }
   .table-wrap { overflow-x: auto; }
-  .loading { color: var(--text-muted); font-size: 14px; padding: 20px 0; text-align: center; }
+  .summary-bar { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .summary-item .label { font-size: 12px; color: var(--text-muted); }
+  .summary-item .value { font-size: 18px; font-weight: 700; }
   .room-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .room-bar .name { min-width: 120px; font-size: 13px; }
   .room-bar .bar-wrap { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
@@ -47,9 +49,6 @@
   .room-bar .amount { min-width: 80px; text-align: right; font-size: 13px; font-weight: 600; }
   .room-bar .amount.pos { color: var(--green); }
   .room-bar .amount.neg { color: var(--red); }
-  .summary-bar { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
-  .summary-item .label { font-size: 12px; color: var(--text-muted); }
-  .summary-item .value { font-size: 18px; font-weight: 700; }
   .updated { font-size: 12px; color: var(--text-muted); text-align: right; margin-top: 8px; }
 </style>
 </head>
@@ -69,7 +68,7 @@
 
   <div class="card">
     <h2>Комиссии по румам</h2>
-    <div id="roomStats"><div class="loading">Загрузка...</div></div>
+    <div id="roomStats"><div class="empty-state">Загрузка...</div></div>
   </div>
 
   <div class="card">
@@ -80,12 +79,13 @@
           <tr>
             <th>Дата</th>
             <th>Рум</th>
-            <th>Валюта</th>
+            <th>Счёт</th>
+            <th>Депозит</th>
             <th>Курс</th>
-            <th>остаток в руме </th>
-            <th>Отправлено</th>
-            <th>После</th>
-            <th>остаток(USD)</th>
+            <th>Остаток в руме до</th>
+            <th>Отправлено (ориг.)</th>
+            <th>После (ориг.)</th>
+            <th>До (USD)</th>
             <th>Отправлено (USD)</th>
             <th>После (USD)</th>
             <th>Комиссия (USD)</th>
@@ -120,22 +120,10 @@ async function loadStats() {
     const avgComm = entries.length ? total / entries.length : 0;
 
     document.getElementById('statsGrid').innerHTML = `
-      <div class="stat-card">
-        <div class="label">Всего депозитов</div>
-        <div class="value">${entries.length}</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Суммарная комиссия</div>
-        <div class="value ${total >= 0 ? 'pos' : 'neg'}">$${fmt(total)}</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Всего отправлено</div>
-        <div class="value">$${fmt(totalSent)}</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Средняя комиссия</div>
-        <div class="value ${avgComm >= 0 ? 'pos' : 'neg'}">$${fmt(avgComm)}</div>
-      </div>
+      <div class="stat-card"><div class="label">Всего депозитов</div><div class="value">${entries.length}</div></div>
+      <div class="stat-card"><div class="label">Суммарная комиссия</div><div class="value ${total >= 0 ? 'pos' : 'neg'}">$${fmt(total)}</div></div>
+      <div class="stat-card"><div class="label">Всего отправлено</div><div class="value">$${fmt(totalSent)}</div></div>
+      <div class="stat-card"><div class="label">Средняя комиссия</div><div class="value ${avgComm >= 0 ? 'pos' : 'neg'}">$${fmt(avgComm)}</div></div>
     `;
 
     const byRoom = {};
@@ -152,9 +140,7 @@ async function loadStats() {
       : rooms.map(([name, data]) => `
         <div class="room-bar">
           <div class="name">${escapeHtml(name)} <span style="color:var(--text-muted);font-size:11px">(${data.count})</span></div>
-          <div class="bar-wrap">
-            <div class="bar-fill" style="width:${Math.abs(data.commission)/maxAbs*100}%;background:${data.commission >= 0 ? 'var(--green)' : 'var(--red)'}"></div>
-          </div>
+          <div class="bar-wrap"><div class="bar-fill" style="width:${Math.abs(data.commission)/maxAbs*100}%;background:${data.commission >= 0 ? 'var(--green)' : 'var(--red)'}"></div></div>
           <div class="amount ${data.commission >= 0 ? 'pos' : 'neg'}">$${fmt(data.commission)}</div>
         </div>
       `).join('');
@@ -168,8 +154,9 @@ async function loadStats() {
         <tr>
           <td>${escapeHtml(e.date)}</td>
           <td>${escapeHtml(e.room)}</td>
-          <td>${e.currency}</td>
-          <td>${e.currency === 'EUR' ? fmt(e.rate) : '—'}</td>
+          <td>${e.accountCurrency || e.currency || 'USD'}</td>
+          <td>${e.depositCurrency || e.accountCurrency || e.currency || 'USD'}</td>
+          <td>${e.rate ? fmt(e.rate) : '—'}</td>
           <td>${fmt(e.beforeOrig)}</td>
           <td>${fmt(e.sentOrig)}</td>
           <td>${fmt(e.afterOrig)}</td>
