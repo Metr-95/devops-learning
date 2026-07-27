@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Статистика покерных комиссий</title>
+<title>Статистика комиссий</title>
 <style>
   :root {
     --bg: #f5f6f8; --card: #ffffff; --border: #dfe3e8;
@@ -15,7 +15,7 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
-  .wrap { max-width: 980px; margin: 0 auto; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   .subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 20px; }
@@ -43,10 +43,13 @@
   .room-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .room-bar .name { min-width: 120px; font-size: 13px; }
   .room-bar .bar-wrap { flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
-  .room-bar .bar-fill { height: 100%; border-radius: 4px; background: var(--accent); }
+  .room-bar .bar-fill { height: 100%; border-radius: 4px; }
   .room-bar .amount { min-width: 80px; text-align: right; font-size: 13px; font-weight: 600; }
   .room-bar .amount.pos { color: var(--green); }
   .room-bar .amount.neg { color: var(--red); }
+  .summary-bar { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .summary-item .label { font-size: 12px; color: var(--text-muted); }
+  .summary-item .value { font-size: 18px; font-weight: 700; }
   .updated { font-size: 12px; color: var(--text-muted); text-align: right; margin-top: 8px; }
 </style>
 </head>
@@ -58,7 +61,7 @@
   </div>
 
   <h1>📊 Статистика покерных комиссий</h1>
-  <div class="subtitle">Публичная страница — данные обновляются в реальном времени с сервера</div>
+  <div class="subtitle">Публичная страница — данные обновляются каждые 30 секунд</div>
 
   <div class="stats-grid" id="statsGrid">
     <div class="stat-card"><div class="label">Загрузка...</div><div class="value">—</div></div>
@@ -75,13 +78,26 @@
       <table>
         <thead>
           <tr>
-            <th>Дата</th><th>Рум</th><th>Валюта</th>
-            <th>Отправлено</th><th>Комиссия (USD)</th>
+            <th>Дата</th>
+            <th>Рум</th>
+            <th>Валюта</th>
+            <th>Курс</th>
+            <th>До</th>
+            <th>Отправлено</th>
+            <th>После</th>
+            <th>До (USD)</th>
+            <th>Отправлено (USD)</th>
+            <th>После (USD)</th>
+            <th>Комиссия (USD)</th>
           </tr>
         </thead>
         <tbody id="historyBody"></tbody>
       </table>
       <div class="empty-state" id="emptyState" style="display:none">Записей пока нет.</div>
+    </div>
+    <div class="summary-bar">
+      <div class="summary-item"><div class="label">Записей</div><div class="value" id="sumCount">0</div></div>
+      <div class="summary-item"><div class="label">Суммарная комиссия (USD)</div><div class="value" id="sumCommission">$0.00</div></div>
     </div>
     <div class="updated" id="updatedAt"></div>
   </div>
@@ -89,7 +105,6 @@
 
 <script>
 const API = 'http://185.239.48.132:3000';
-
 function fmt(n) { return Number(n).toFixed(2); }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -100,7 +115,6 @@ async function loadStats() {
     const res = await fetch(API + '/entries');
     const entries = await res.json();
 
-    // Общая статистика
     const total = entries.reduce((s, e) => s + e.commission, 0);
     const totalSent = entries.reduce((s, e) => s + e.sentUSD, 0);
     const avgComm = entries.length ? total / entries.length : 0;
@@ -124,21 +138,18 @@ async function loadStats() {
       </div>
     `;
 
-    // Статистика по румам
     const byRoom = {};
     entries.forEach(e => {
       if (!byRoom[e.room]) byRoom[e.room] = { commission: 0, count: 0 };
       byRoom[e.room].commission += e.commission;
       byRoom[e.room].count++;
     });
-
     const rooms = Object.entries(byRoom).sort((a, b) => b[1].commission - a[1].commission);
     const maxAbs = Math.max(...rooms.map(r => Math.abs(r[1].commission)), 1);
 
-    if (rooms.length === 0) {
-      document.getElementById('roomStats').innerHTML = '<div class="empty-state">Нет данных</div>';
-    } else {
-      document.getElementById('roomStats').innerHTML = rooms.map(([name, data]) => `
+    document.getElementById('roomStats').innerHTML = rooms.length === 0
+      ? '<div class="empty-state">Нет данных</div>'
+      : rooms.map(([name, data]) => `
         <div class="room-bar">
           <div class="name">${escapeHtml(name)} <span style="color:var(--text-muted);font-size:11px">(${data.count})</span></div>
           <div class="bar-wrap">
@@ -147,9 +158,7 @@ async function loadStats() {
           <div class="amount ${data.commission >= 0 ? 'pos' : 'neg'}">$${fmt(data.commission)}</div>
         </div>
       `).join('');
-    }
 
-    // История
     if (entries.length === 0) {
       document.getElementById('emptyState').style.display = 'block';
       document.getElementById('historyBody').innerHTML = '';
@@ -160,21 +169,29 @@ async function loadStats() {
           <td>${escapeHtml(e.date)}</td>
           <td>${escapeHtml(e.room)}</td>
           <td>${e.currency}</td>
-          <td>$${fmt(e.sentUSD)}</td>
+          <td>${e.currency === 'EUR' ? fmt(e.rate) : '—'}</td>
+          <td>${fmt(e.beforeOrig)}</td>
+          <td>${fmt(e.sentOrig)}</td>
+          <td>${fmt(e.afterOrig)}</td>
+          <td>${fmt(e.beforeUSD)}</td>
+          <td>${fmt(e.sentUSD)}</td>
+          <td>${fmt(e.afterUSD)}</td>
           <td class="comm-cell ${e.commission >= 0 ? 'pos' : 'neg'}">$${fmt(e.commission)}</td>
         </tr>
       `).join('');
     }
 
+    document.getElementById('sumCount').textContent = entries.length;
+    document.getElementById('sumCommission').textContent = '$' + fmt(total);
     document.getElementById('updatedAt').textContent = 'Обновлено: ' + new Date().toLocaleString('ru-RU');
 
   } catch(e) {
-    document.getElementById('statsGrid').innerHTML = '<div class="stat-card"><div class="label">Ошибка</div><div class="value" style="font-size:14px;color:var(--red)">Не удалось загрузить данные с сервера</div></div>';
+    document.getElementById('statsGrid').innerHTML = '<div class="stat-card"><div class="label">Ошибка</div><div class="value" style="font-size:14px;color:var(--red)">Не удалось загрузить данные</div></div>';
   }
 }
 
 loadStats();
-setInterval(loadStats, 30000); // Обновлять каждые 30 секунд
+setInterval(loadStats, 30000);
 </script>
 </body>
 </html>
