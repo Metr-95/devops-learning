@@ -10,7 +10,6 @@ const DATA_FILE = '/data/entries.json';
 app.use(cors());
 app.use(express.json());
 
-// Создать файл если не существует
 function ensureDataFile() {
   const dir = path.dirname(DATA_FILE);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -32,6 +31,18 @@ app.post('/entries', (req, res) => {
   data.push(entry);
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
   res.json(entry);
+});
+
+// Обновить запись
+app.put('/entries/:id', (req, res) => {
+  ensureDataFile();
+  let data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  const id = parseInt(req.params.id);
+  const idx = data.findIndex(e => e.id === id);
+  if (idx === -1) { res.status(404).json({ error: 'Not found' }); return; }
+  data[idx] = { ...req.body, id };
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  res.json(data[idx]);
 });
 
 // Удалить запись
