@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Статистика комиссий</title>
+<title>Статистика покерных комиссий</title>
 <style>
   :root {
     --bg: #f5f6f8; --card: #ffffff; --border: #dfe3e8;
@@ -20,7 +20,7 @@
   .subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 20px; }
   .card h2 { font-size: 15px; margin: 0 0 14px; }
-  .nav { display: flex; gap: 10px; margin-bottom: 20px; }
+  .nav { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
   .nav a { color: var(--accent); text-decoration: none; font-size: 14px; }
   .nav a:hover { text-decoration: underline; }
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
@@ -50,6 +50,13 @@
   .room-bar .amount.pos { color: var(--green); }
   .room-bar .amount.neg { color: var(--red); }
   .updated { font-size: 12px; color: var(--text-muted); text-align: right; margin-top: 8px; }
+  .visits-section { display: none; }
+  .visits-section.show { display: block; }
+  .show-visits-btn { font-size: 13px; color: var(--text-muted); cursor: pointer; background: none; border: none; padding: 0; text-decoration: underline; }
+  .pw-row { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .pw-row input { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; width: 180px; }
+  .pw-row .btn { padding: 7px 14px; border-radius: 8px; border: none; background: var(--accent); color: #fff; font-size: 13px; cursor: pointer; }
+  .flag { font-size: 16px; }
 </style>
 </head>
 <body>
@@ -59,7 +66,7 @@
     <a href="/calculator.html">Управление записями</a>
   </div>
 
-  <h1>📊 Статистика комиссий</h1>
+  <h1>📊 Статистика покерных комиссий</h1>
   <div class="subtitle">Публичная страница — данные обновляются каждые 30 секунд</div>
 
   <div class="stats-grid" id="statsGrid">
@@ -79,15 +86,11 @@
           <tr>
             <th>Дата</th>
             <th>Рум</th>
-            <th>Счёт</th>
-            <th>Депозит</th>
-            <th>Курс</th>
+            <th>Валюта счёта</th>
+            <th>Курс EUR/USD</th>
             <th>Остаток в руме до</th>
-            <th>Отправлено (ориг.)</th>
-            <th>После (ориг.)</th>
-            <th>До (USD)</th>
-            <th>Отправлено (USD)</th>
-            <th>После (USD)</th>
+            <th>Отправлено</th>
+            <th>Остаток в руме после</th>
             <th>Комиссия (USD)</th>
           </tr>
         </thead>
@@ -101,14 +104,53 @@
     </div>
     <div class="updated" id="updatedAt"></div>
   </div>
+
+  <!-- Лог посещений — только для владельца -->
+  <div class="card">
+    <h2>🔒 Лог посещений</h2>
+    <div id="visitsAuth">
+      <div class="pw-row">
+        <input type="password" id="visitsPw" placeholder="Пароль" onkeydown="if(event.key==='Enter')showVisits()">
+        <button class="btn" onclick="showVisits()">Показать</button>
+      </div>
+    </div>
+    <div class="visits-section" id="visitsSection">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left">Дата</th>
+              <th style="text-align:left">IP</th>
+              <th style="text-align:left">Страна</th>
+              <th style="text-align:left">Город</th>
+              <th style="text-align:left">Провайдер</th>
+              <th style="text-align:left">Браузер</th>
+            </tr>
+          </thead>
+          <tbody id="visitsBody"></tbody>
+        </table>
+        <div class="empty-state" id="visitsEmpty" style="display:none">Посещений пока нет.</div>
+      </div>
+      <div class="updated" id="visitsCount"></div>
+    </div>
+  </div>
 </div>
 
 <script>
 const API = 'https://metr95.com/api';
+const PASSWORD = 'poker2026';
+
 function fmt(n) { return Number(n).toFixed(2); }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+// Записать визит
+fetch(API + '/visits', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ page: '/stats.html', userAgent: navigator.userAgent })
+}).catch(() => {});
 
 async function loadStats() {
   try {
@@ -150,22 +192,21 @@ async function loadStats() {
       document.getElementById('historyBody').innerHTML = '';
     } else {
       document.getElementById('emptyState').style.display = 'none';
-      document.getElementById('historyBody').innerHTML = [...entries].reverse().map(e => `
-        <tr>
+      document.getElementById('historyBody').innerHTML = [...entries].reverse().map(e => {
+        const acc = e.accountCurrency || e.currency || 'USD';
+        const dep = e.depositCurrency || acc;
+        const sentLabel = dep !== acc ? `${fmt(e.sentOrig)} ${dep}` : `${fmt(e.sentOrig)} ${acc}`;
+        return `<tr>
           <td>${escapeHtml(e.date)}</td>
           <td>${escapeHtml(e.room)}</td>
-          <td>${e.accountCurrency || e.currency || 'USD'}</td>
-          <td>${e.depositCurrency || e.accountCurrency || e.currency || 'USD'}</td>
+          <td>${acc}</td>
           <td>${e.rate ? fmt(e.rate) : '—'}</td>
-          <td>${fmt(e.beforeOrig)}</td>
-          <td>${fmt(e.sentOrig)}</td>
-          <td>${fmt(e.afterOrig)}</td>
-          <td>${fmt(e.beforeUSD)}</td>
-          <td>${fmt(e.sentUSD)}</td>
-          <td>${fmt(e.afterUSD)}</td>
+          <td>${fmt(e.beforeOrig)} ${acc}</td>
+          <td>${sentLabel}</td>
+          <td>${fmt(e.afterOrig)} ${acc}</td>
           <td class="comm-cell ${e.commission >= 0 ? 'pos' : 'neg'}">$${fmt(e.commission)}</td>
-        </tr>
-      `).join('');
+        </tr>`;
+      }).join('');
     }
 
     document.getElementById('sumCount').textContent = entries.length;
@@ -174,6 +215,53 @@ async function loadStats() {
 
   } catch(e) {
     document.getElementById('statsGrid').innerHTML = '<div class="stat-card"><div class="label">Ошибка</div><div class="value" style="font-size:14px;color:var(--red)">Не удалось загрузить данные</div></div>';
+  }
+}
+
+async function showVisits() {
+  const pw = document.getElementById('visitsPw').value;
+  if (pw !== PASSWORD) { alert('Неверный пароль'); return; }
+
+  try {
+    const res = await fetch(API + '/visits');
+    const visits = await res.json();
+
+    document.getElementById('visitsAuth').style.display = 'none';
+    document.getElementById('visitsSection').classList.add('show');
+
+    if (visits.length === 0) {
+      document.getElementById('visitsEmpty').style.display = 'block';
+      document.getElementById('visitsBody').innerHTML = '';
+    } else {
+      document.getElementById('visitsEmpty').style.display = 'none';
+
+      const countryFlags = { 'RU': '🇷🇺', 'IL': '🇮🇱', 'US': '🇺🇸', 'DE': '🇩🇪', 'GB': '🇬🇧', 'UA': '🇺🇦', 'BY': '🇧🇾', 'KZ': '🇰🇿' };
+
+      document.getElementById('visitsBody').innerHTML = visits.map(v => {
+        const flag = countryFlags[v.country] || '🌍';
+        const ua = v.userAgent || '';
+        let browser = 'Неизвестно';
+        if (ua.includes('Chrome')) browser = 'Chrome';
+        else if (ua.includes('Firefox')) browser = 'Firefox';
+        else if (ua.includes('Safari')) browser = 'Safari';
+        else if (ua.includes('Edge')) browser = 'Edge';
+        const device = ua.includes('Mobile') ? '📱' : '💻';
+        return `
+          <tr>
+            <td style="text-align:left">${escapeHtml(v.date)}</td>
+            <td style="text-align:left;font-family:monospace;font-size:12px">${escapeHtml(v.ip)}</td>
+            <td style="text-align:left">${flag} ${escapeHtml(v.country)}</td>
+            <td style="text-align:left">${escapeHtml(v.city)}</td>
+            <td style="text-align:left;font-size:12px">${escapeHtml(v.org)}</td>
+            <td style="text-align:left">${device} ${browser}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('visitsCount').textContent = `Всего записей: ${visits.length}`;
+  } catch(e) {
+    alert('Ошибка загрузки логов');
   }
 }
 
