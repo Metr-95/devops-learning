@@ -1,0 +1,20 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html
+      - ./calculator.html:/usr/share/nginx/html/calculator.html
+    restart: always
+
+  api:
+    build: ./api
+    ports:
+      - "3000:3000"
+    volumes:
+      - poker-data:/data
+    restart: always
+
+volumes:
+  poker-data:

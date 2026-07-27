@@ -7,7 +7,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -15,9 +15,9 @@ jobs:
       - name: Login to Docker Hub
         run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Build and Push Docker image
+      - name: Build and Push API image
         run: |
-          docker buildx build -t metr95/myapp:latest --push .
+          docker buildx build -t metr95/poker-api:latest --push ./api
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.0
@@ -26,7 +26,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            docker pull metr95/myapp:latest
-            docker stop myapp || true
-            docker rm myapp || true
-            docker run -d --name myapp -p 8080:80 --restart always metr95/myapp:latest
+            cd /opt/poker-app
+            git pull || (git clone https://github.com/Metr-95/devops-learning.git /opt/poker-app && cd /opt/poker-app)
+            docker pull metr95/poker-api:latest
+            docker-compose down
+            docker-compose up -d
