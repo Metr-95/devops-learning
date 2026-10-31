@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install API dependencies
+        run: npm install --prefix api --ignore-scripts --no-audit --no-fund
+
+      - name: Check API JavaScript syntax
+        run: node --check api/server.js
+
+      - name: Validate Docker Compose configuration
+        run: docker compose config --quiet
